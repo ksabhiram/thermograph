@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThermoGraph — Thermal Profile Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg1: #f4f4f4;
+    --bg-panel: #ffffff;
+    --border-light: #cccccc;
+    --border-focus: #444444;
+    --text-primary: #000000;
+    --text-secondary: #333333;
+    --text-muted: #666666;
+    --font-latex: 'STIX Two Text', 'Times New Roman', serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-latex); background: var(--bg1); min-height: 100vh; color: var(--text-primary); overflow-x: hidden; }
+  .panel { background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 4px; }
+  header { position: relative; z-index: 10; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; background: var(--bg-panel); border-bottom: 1px solid var(--border-light); box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .logo { display: flex; align-items: center; gap: 14px; }
+  .logo-text { font-size: 24px; font-weight: 600; }
+  .logo-sub { font-size: 12px; font-style: italic; color: var(--text-muted); }
+  .tab-bar { display: flex; gap: 4px; background: #eaeaea; padding: 4px; border-radius: 4px; border: 1px solid var(--border-light); }
+  .tab-btn { padding: 6px 16px; border-radius: 2px; border: none; cursor: pointer; font-family: var(--font-latex); font-size: 14px; font-weight: 500; color: var(--text-secondary); background: transparent; transition: background 0.1s; }
+  .tab-btn.active { background: #ffffff; color: var(--text-primary); box-shadow: 0 1px 2px rgba(0,0,0,0.1); border: 1px solid var(--border-light); }
+  .global-config { display: flex; gap: 16px; background: #e8e8e8; padding: 10px 32px; border-bottom: 1px solid #ccc; font-size: 13px; align-items: center; flex-wrap: wrap; }
+  .app-body { display: grid; grid-template-columns: 340px 1fr; gap: 24px; padding: 24px 32px 32px; }
+  .sidebar { display: flex; flex-direction: column; gap: 16px; }
+  .panel-title { font-size: 14px; font-weight: 600; border-bottom: 1px solid var(--border-light); padding-bottom: 6px; margin-bottom: 12px; }
+  .glass-panel { padding: 16px; background: var(--bg-panel); border: 1px solid var(--border-light); box-shadow: 0 2px 6px rgba(0,0,0,0.02); border-radius: 4px; }
+  .steps-list { display: flex; flex-direction: column; gap: 6px; max-height: 250px; overflow-y: auto; }
+  .step-chip { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 2px; background: #f9f9f9; border: 1px solid var(--border-light); font-size: 13px; }
+  .step-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: #000; }
+  .step-chip.t-step .step-dot { background: #0000ff; }
+  .step-chip.p-step .step-dot { background: #ff0000; }
+  .step-label { flex: 1; color: var(--text-primary); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .inline-edit { width: 48px; padding: 2px; text-align: center; border: 1px solid #ccc; border-radius: 2px; font-family: var(--font-latex); font-size: 13px; background: rgba(255,255,255,0.9); }
+  .inline-edit:focus { border-color: #0000ff; outline: none; background: #fff; }
+  .step-remove { width: 20px; height: 20px; border: none; background: transparent; color: #aa0000; cursor: pointer; font-size: 16px; font-weight: bold; }
+  .step-remove:hover { color: #ff0000; }
+  .step-move-btn { width: 20px; height: 20px; border: none; background: transparent; color: #0066cc; cursor: pointer; font-size: 14px; font-weight: bold; padding: 0; }
+  .step-move-btn:hover { color: #0099ff; }
+  .step-move-btn:disabled { color: #cccccc; cursor: not-allowed; }
+  .input-group { margin-bottom: 12px; }
+  .input-label { font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block; }
+  .glass-input { width: 100%; padding: 6px 8px; border-radius: 2px; background: #fff; border: 1px solid var(--border-light); color: var(--text-primary); font-family: var(--font-latex); font-size: 14px; outline: none; }
+  .glass-input:focus { border-color: var(--border-focus); }
+  .hint { font-size: 12px; color: #666; margin-top: 6px; font-style: italic; line-height: 1.4; }
+  .btn { padding: 6px 12px; border-radius: 2px; border: 1px solid var(--border-light); cursor: pointer; font-family: var(--font-latex); font-size: 13px; background: #f0f0f0; color: #111; font-weight: 500; }
+  .btn:hover { background: #e0e0e0; }
+  .btn-primary { background: #333; color: #fff; border-color: #222; }
+  .btn-primary:hover { background: #111; }
+  .action-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .canvas-area { display: flex; flex-direction: column; gap: 16px; align-items: flex-start; }
+  .chart-container { padding: 20px; background: #ffffff; border: 1px solid var(--border-light); box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-radius: 2px; display: inline-block; width: 740px; height: 600px; }
+  #mainCanvas, #hpCanvas { display: block; background: #fff; cursor: pointer; }
+  .ctx-menu { position: fixed; z-index: 1000; background: #fff; border: 1px solid #aaa; padding: 4px 0; box-shadow: 2px 2px 6px rgba(0,0,0,0.2); min-width: 140px; display: none; flex-direction: column; font-family: sans-serif; }
+  .ctx-menu.show { display: flex; }
+  .ctx-item { padding: 6px 16px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; color: #000; }
+  .ctx-item:hover { background: #0066cc; color: #fff; }
+  .ctx-divider { height: 1px; background: #ddd; margin: 4px 0; }
+  .modal-overlay { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal-box { background: #fff; border: 1px solid #999; border-radius: 4px; padding: 24px; min-width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+  .modal-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+  .export-bar { display: flex; gap: 10px; align-items: center; padding: 10px 16px; background: #fff; border: 1px solid var(--border-light); border-radius: 4px; width: 100%; }
+  .tab-page { display: none; }
+  .tab-page.active { display: contents; }
+  .pressure-page { display: none; grid-column: 1 / -1; }
+  .pressure-page.active { display: block; }
+  .pressure-layout { display: grid; grid-template-columns: 340px 1fr; gap: 24px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div>
+      <div class="logo-text">ThermoGraph</div>
+      <div class="logo-sub">High-Fidelity Profile Generation</div>
+    </div>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('thermal')">Temperature–Time</button>
+    <button class="tab-btn" onclick="switchTab('hotpress')">Hot Press P–T</button>
+  </div>
+</header>
+
+<div class="global-config">
+  <strong>Global Environment:</strong>
+  <div style="display:flex;align-items:center;gap:4px;">
+    <label for="global-temp-unit">Temp Scale:</label>
+    <select id="global-temp-unit" class="glass-input" style="width:auto;padding:2px 6px;" onchange="toggleTempScale()">
+      <option value="C">Celsius (°C)</option>
+      <option value="K">Kelvin (K)</option>
+    </select>
+  </div>
+  <div style="display:flex;align-items:center;gap:4px;">
+    <label for="thermal-time-unit">Time Axis:</label>
+    <select id="thermal-time-unit" class="glass-input" style="width:auto;padding:2px 6px;" onchange="unitChanged()">
+      <option value="min">Minutes (min)</option>
+      <option value="h">Hours (h)</option>
+    </select>
+  </div>
+  <div style="display:flex;align-items:center;gap:4px;">
+    <label for="global-rate-unit">Rate Unit:</label>
+    <select id="global-rate-unit" class="glass-input" style="width:auto;padding:2px 6px;" onchange="redraw();redrawHP()">
+      <option value="min">/min</option>
+      <option value="h">/hour</option>
+    </select>
+  </div>
+  <div style="display:flex;align-items:center;gap:4px;">
+    <label for="global-press-unit">Press Unit:</label>
+    <input type="text" id="global-press-unit" class="glass-input" style="width:60px;padding:2px 6px;" value="MPa" oninput="renderHPStepList();redrawHP()">
+  </div>
+  <label style="display:flex;align-items:center;gap:4px;margin-left:auto;">
+    <input type="checkbox" id="show-labels" checked onchange="redraw();redrawHP()"> Show Labels
+  </label>
+  <span class="hint" style="margin-top:0;">* Double-click any label on the graph to edit or hide it.</span>
+</div>
+
+<div class="app-body" id="mainLayout">
+  <div class="tab-page active" id="thermalTab">
+    <aside class="sidebar">
+      <div class="glass-panel">
+        <div class="panel-title">Profile Info</div>
+        <div class="input-group">
+          <label class="input-label">Chart Title</label>
+          <input id="chart-title" class="glass-input" value="Temperature Profile for Cu_{2}Sb_{x}Te" oninput="redraw()">
+          <div class="hint">Formatting: <strong>_{sub}</strong> and <strong>^{sup}</strong></div>
+        </div>
+      </div>
+      <div class="glass-panel">
+        <div class="panel-title">Thermal Steps</div>
+        <div class="action-row" style="margin-bottom:12px;">
+          <button class="btn" onclick="openModal('ramp')">Add Ramp</button>
+          <button class="btn" onclick="openModal('hold')">Add Hold</button>
+          <button class="btn" onclick="openModal('cool')">Add Cool</button>
+        </div>
+        <div class="steps-list" id="stepsList"></div>
+        <button class="btn" onclick="clearAll()" style="width:100%;margin-top:10px;">Clear All</button>
+      </div>
+    </aside>
+    <div class="canvas-area">
+      <div class="chart-container" id="thermalContainer">
+        <canvas id="mainCanvas"></canvas>
+      </div>
+      <div class="export-bar">
+        <button class="btn" onclick="exportPNG('mainCanvas','thermal_profile.png')">Export PNG</button>
+        <button class="btn" onclick="exportSVG('mainCanvas','thermal_profile.svg')">Export SVG</button>
+        <button class="btn" onclick="exportCSV()">Export CSV</button>
+        <div style="flex:1;"></div>
+        <button class="btn btn-primary" onclick="loadDemo()">Demo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pressure-page" id="hotpressTab">
+  <div class="pressure-layout">
+    <aside class="sidebar">
+      <div class="glass-panel">
+        <div class="panel-title">Hot Press Settings</div>
+        <div class="input-group">
+          <label class="input-label">Chart Title</label>
+          <input id="hp-title" class="glass-input" value="Hot Press Profile (Sample A_{1}B^{2})" oninput="redrawHP()">
+          <div class="hint">Formatting: <strong>_{sub}</strong> and <strong>^{sup}</strong></div>
+        </div>
+      </div>
+      <div class="glass-panel" style="flex:1;">
+        <div class="panel-title" style="color:#0000ff">Temperature Steps (Blue)</div>
+        <div class="action-row" style="margin-bottom:10px;">
+          <button class="btn" style="color:#0000ff;font-weight:bold" onclick="openHPModal('temp-ramp')">T Ramp</button>
+          <button class="btn" style="color:#0000ff;font-weight:bold" onclick="openHPModal('temp-hold')">T Hold</button>
+          <button class="btn" style="color:#0000ff;font-weight:bold" onclick="openHPModal('temp-cool')">T Cool</button>
+        </div>
+        <div class="steps-list" id="hpTempStepsList" style="margin-bottom:20px;"></div>
+        <div class="panel-title" style="color:#ff0000">Pressure Steps (Red)</div>
+        <div class="action-row" style="margin-bottom:10px;">
+          <button class="btn" style="color:#ff0000;font-weight:bold" onclick="openHPModal('press-ramp')">P Ramp</button>
+          <button class="btn" style="color:#ff0000;font-weight:bold" onclick="openHPModal('press-hold')">P Hold</button>
+          <button class="btn" style="color:#ff0000;font-weight:bold" onclick="openHPModal('press-cool')">P Release</button>
+        </div>
+        <div class="steps-list" id="hpPressStepsList"></div>
+        <button class="btn" onclick="clearHP()" style="width:100%;margin-top:16px;">Clear All Steps</button>
+      </div>
+    </aside>
+    <div class="canvas-area">
+      <div class="chart-container" id="hpContainer">
+        <canvas id="hpCanvas"></canvas>
+      </div>
+      <div class="export-bar">
+        <button class="btn" onclick="exportPNG('hpCanvas','hotpress_profile.png')">Export PNG</button>
+        <button class="btn" onclick="exportSVG('hpCanvas','hotpress_profile.svg')">Export SVG</button>
+        <button class="btn" onclick="exportHPCSV()">Export CSV</button>
+        <div style="flex:1;"></div>
+        <button class="btn btn-primary" onclick="loadHPDemo()">Load Demo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" onclick="ctxAction('ramp')">Add Temp Ramp</div>
+  <div class="ctx-item" onclick="ctxAction('hold')">Add Temp Hold</div>
+  <div class="ctx-item" onclick="ctxAction('cool')">Add Temp Cool</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item" onclick="ctxAction('clear')">Clear All</div>
+</div>
+<div class="ctx-menu" id="ctxMenuHP">
+  <div class="ctx-item" onclick="ctxActionHP('temp-ramp')" style="color:#0000ff">Add Temp Ramp</div>
+  <div class="ctx-item" onclick="ctxActionHP('temp-hold')" style="color:#0000ff">Add Temp Hold</div>
+  <div class="ctx-item" onclick="ctxActionHP('temp-cool')" style="color:#0000ff">Add Temp Cool</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item" onclick="ctxActionHP('press-ramp')" style="color:#ff0000">Add Pressure Ramp</div>
+  <div class="ctx-item" onclick="ctxActionHP('press-hold')" style="color:#ff0000">Add Pressure Hold</div>
+  <div class="ctx-item" onclick="ctxActionHP('press-cool')" style="color:#ff0000">Add Pressure Release</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item" onclick="ctxActionHP('clear')">Clear All Steps</div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitleText">Add Step</div>
+    <div id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modalConfirmBtn">Add to Timeline</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let thermalSteps=[], hpTempSteps=[], hpPressSteps=[];
+let pendingType=null, pendingHPType=null, activeTab='thermal';
+let tempUnit='C', currentTimeUnit='min';
+let activeLabelsThermal=[], activeLabelsHP=[];
+
+const CANVAS_W=700, CANVAS_H=560;
+
+function getBaseTempC(){ return 23; }
+function getBaseTempDisp(){ return tempUnit==='K'?300:23; }
+function getUnit(){ return currentTimeUnit; }
+function getPressUnit(){ return document.getElementById('global-press-unit').value||'MPa'; }
+const fmt=(n)=>parseFloat(n.toFixed(1)).toString();
+
+function toDispTemp(c){ return tempUnit==='K'?c+277:c; }
+function toInternalTemp(d){ return tempUnit==='K'?parseFloat(d)-277:parseFloat(d); }
+// Stored always in minutes. Display unit depends on currentTimeUnit.
+function toDispTime(m){ return currentTimeUnit==='h'?m/60:m; }
+function toInternalTime(d){ return currentTimeUnit==='h'?parseFloat(d)*60:parseFloat(d); }
+
+function switchTab(tab){
+  activeTab=tab;
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&tab==='thermal')||(i===1&&tab==='hotpress')));
+  document.getElementById('mainLayout').style.display=tab==='thermal'?'grid':'none';
+  document.getElementById('hotpressTab').classList.toggle('active',tab==='hotpress');
+  if(tab==='thermal') redraw(); else redrawHP();
+}
+
+function unitChanged(){
+  currentTimeUnit=document.getElementById('thermal-time-unit').value;
+  renderStepList(); renderHPStepList();
+  if(activeTab==='thermal') redraw(); else redrawHP();
+}
+
+function toggleTempScale(){
+  tempUnit=document.getElementById('global-temp-unit').value;
+  renderStepList(); renderHPStepList();
+  if(activeTab==='thermal') redraw(); else redrawHP();
+}
+
+// Rate of change per display-rate-unit
+function getRateStr(deltaDispTemp, durationMinutes){
+  if(durationMinutes===0) return '0';
+  let rateUnit=document.getElementById('global-rate-unit').value;
+  let denom=rateUnit==='h'?durationMinutes/60:durationMinutes;
+  return fmt(Math.abs(deltaDispTemp/denom));
+}
+function getPressRateStr(deltaP, durationMinutes){
+  if(durationMinutes===0) return '0';
+  let rateUnit=document.getElementById('global-rate-unit').value;
+  let denom=rateUnit==='h'?durationMinutes/60:durationMinutes;
+  return fmt(Math.abs(deltaP/denom));
+}
+
+// ============================================================
+// RICH TEXT
+// ============================================================
+function drawRichText(ctx,text,x,y,align='center',color='#000'){
+  let tokens=[], regex=/_\{([^}]+)\}|\^\{([^}]+)\}/g, lastIdx=0, m;
+  while((m=regex.exec(text))!==null){
+    if(m.index>lastIdx) tokens.push({type:'normal',text:text.substring(lastIdx,m.index)});
+    if(m[1]) tokens.push({type:'sub',text:m[1]});
+    if(m[2]) tokens.push({type:'sup',text:m[2]});
+    lastIdx=regex.lastIndex;
+  }
+  if(lastIdx<text.length) tokens.push({type:'normal',text:text.substring(lastIdx)});
+  const nf='18px "STIX Two Text",serif', sf='13.5px "STIX Two Text",serif';
+  let tw=0;
+  tokens.forEach(t=>{ ctx.font=t.type==='normal'?nf:sf; t.w=ctx.measureText(t.text).width; tw+=t.w; });
+  let cx=x;
+  if(align==='center') cx-=tw/2;
+  if(align==='right') cx-=tw;
+  ctx.fillStyle=color; ctx.textBaseline='middle';
+  tokens.forEach(t=>{
+    ctx.font=t.type==='normal'?nf:sf;
+    let yo=t.type==='sub'?4.5:t.type==='sup'?-6.3:0;
+    ctx.fillText(t.text,cx,y+yo); cx+=t.w;
+  });
+  ctx.font=nf;
+}
+
+// Draw a transparent-background label and register it for dbl-click editing
+function drawLabel(ctx,text,x,y,color,bold,list,onEdit,fontSize){
+  if(!document.getElementById('show-labels').checked) return;
+  if(text==='') return;
+  ctx.save();
+  fontSize=fontSize||14;
+  let fs=(bold?'bold ':'')+fontSize+'px "STIX Two Text",serif';
+  ctx.font=fs;
+  let w=ctx.measureText(text).width;
+  // No background rectangle
+  ctx.fillStyle=color; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(text,x,y);
+  ctx.restore();
+  if(list&&onEdit){
+    list.push({x:x-w/2-6,y:y-12,w:w+12,h:24,text,onEdit});
+  }
+}
+
+function handleDblClick(e,canvas,list){
+  const rect=canvas.getBoundingClientRect();
+  const sx=CANVAS_W/rect.width, sy=CANVAS_H/rect.height;
+  const mx=(e.clientX-rect.left)*sx, my=(e.clientY-rect.top)*sy;
+  for(let i=list.length-1;i>=0;i--){
+    let l=list[i];
+    if(mx>=l.x-5&&mx<=l.x+l.w+5&&my>=l.y-5&&my<=l.y+l.h+5){
+      let v=prompt('Edit label (clear to hide):',l.text);
+      if(v!==null) l.onEdit(v);
+      return;
+    }
+  }
+}
+
+// ============================================================
+// THERMAL SIDEBAR
+// ============================================================
+function addStep(s){ thermalSteps.push(s); renderStepList(); redraw(); }
+function removeStep(i){ thermalSteps.splice(i,1); renderStepList(); redraw(); }
+function clearAll(){ thermalSteps=[]; renderStepList(); redraw(); }
+
+window.updateTStep=function(idx,field,val){
+  if(val==='') return;
+  thermalSteps[idx][field]=field==='durationM'?toInternalTime(val):toInternalTemp(val);
+  redraw();
+};
+
+function renderStepList(){
+  const list=document.getElementById('stepsList');
+  list.innerHTML='';
+  const u=tempUnit==='C'?'°C':'K';
+  thermalSteps.forEach((s,i)=>{
+    const div=document.createElement('div'); div.className='step-chip t-step';
+    let td=toDispTemp(s.targetC), dd=toDispTime(s.durationM);
+    let icon=s.type==='ramp'?'↑':s.type==='cool'?'↓':'— Hold';
+    div.innerHTML=`<div class="step-dot"></div><div class="step-label">
+      <span>${icon} <input class="inline-edit" type="number" step="any" value="${fmt(td)}" onchange="updateTStep(${i},'targetC',this.value)">${u}</span>
+      <span><input class="inline-edit" type="number" step="any" value="${fmt(dd)}" onchange="updateTStep(${i},'durationM',this.value)">${getUnit()}</span>
+    </div><button class="step-move-btn" onclick="moveStepUp(${i})" ${i===0?'disabled':''}>▲</button><button class="step-move-btn" onclick="moveStepDown(${i})" ${i===thermalSteps.length-1?'disabled':''}>▼</button><button class="step-remove" onclick="removeStep(${i})">×</button>`;
+    list.appendChild(div);
+  });
+}
+
+function moveStepUp(idx){
+  if(idx>0){
+    [thermalSteps[idx], thermalSteps[idx-1]]=[thermalSteps[idx-1], thermalSteps[idx]];
+    renderStepList(); redraw();
+  }
+}
+
+function moveStepDown(idx){
+  if(idx<thermalSteps.length-1){
+    [thermalSteps[idx], thermalSteps[idx+1]]=[thermalSteps[idx+1], thermalSteps[idx]];
+    renderStepList(); redraw();
+  }
+}
+
+function openModal(type){
+  pendingType=type;
+  document.getElementById('modalTitleText').textContent=type==='ramp'?'Add Ramp Up':type==='hold'?'Add Dwell':'Add Cool Down';
+  const u=tempUnit==='C'?'°C':'K';
+  let curC=getBaseTempC(); if(thermalSteps.length) curC=thermalSteps[thermalSteps.length-1].targetC;
+  let defC=type==='cool'?getBaseTempC():curC+(type==='ramp'?500:0);
+  let defDur=toDispTime(600);
+  document.getElementById('modalBody').innerHTML=`
+    <div class="input-group"><label class="input-label">Target (${u})</label><input id="m-target" class="glass-input" type="number" value="${fmt(toDispTemp(defC))}"></div>
+    <div class="input-group"><label class="input-label">Duration (${getUnit()})</label><input id="m-dur" class="glass-input" type="number" step="0.1" value="${fmt(defDur)}"></div>`;
+  document.getElementById('modalConfirmBtn').onclick=confirmModal;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function confirmModal(){
+  if(!pendingType) return;
+  let td=parseFloat(document.getElementById('m-target').value);
+  let dd=parseFloat(document.getElementById('m-dur').value);
+  if(isNaN(td)||isNaN(dd)) return alert('Invalid inputs.');
+  addStep({type:pendingType,targetC:toInternalTemp(td),durationM:toInternalTime(dd)});
+  closeModal();
+}
+
+// ============================================================
+// HOT PRESS SIDEBAR
+// ============================================================
+function clearHP(){ hpTempSteps=[]; hpPressSteps=[]; renderHPStepList(); redrawHP(); }
+
+window.updateHPTemp=function(idx,field,val){
+  if(val==='') return;
+  hpTempSteps[idx][field]=field==='durationM'?toInternalTime(val):toInternalTemp(val);
+  redrawHP();
+};
+window.updateHPPress=function(idx,field,val){
+  if(val==='') return;
+  hpPressSteps[idx][field]=field==='durationM'?toInternalTime(val):parseFloat(val);
+  redrawHP();
+};
+window.removeHPTemp=function(idx){ hpTempSteps.splice(idx,1); renderHPStepList(); redrawHP(); };
+window.removeHPPress=function(idx){ hpPressSteps.splice(idx,1); renderHPStepList(); redrawHP(); };
+
+function renderHPStepList(){
+  const tl=document.getElementById('hpTempStepsList'), pl=document.getElementById('hpPressStepsList');
+  tl.innerHTML=''; pl.innerHTML='';
+  const u=tempUnit==='C'?'°C':'K', pU=getPressUnit();
+  hpTempSteps.forEach((s,i)=>{
+    const div=document.createElement('div'); div.className='step-chip t-step'; div.dataset.index=i; div.dataset.type='temp';
+    let td=toDispTemp(s.targetC), dd=toDispTime(s.durationM);
+    let icon=s.type==='ramp'?'↑':s.type==='cool'?'↓':'— Hold';
+    div.innerHTML=`<div class="step-dot"></div><div class="step-label">
+      <span>${icon} <input class="inline-edit" type="number" step="any" value="${fmt(td)}" onchange="updateHPTemp(${i},'targetC',this.value)" onclick="event.stopPropagation()">${u}</span>
+      <span><input class="inline-edit" type="number" step="any" value="${fmt(dd)}" onchange="updateHPTemp(${i},'durationM',this.value)" onclick="event.stopPropagation()">${getUnit()}</span>
+    </div><button class="step-remove" onclick="removeHPTemp(${i});event.stopPropagation()">×</button>`;
+    div.addEventListener('click',()=>toggleSegment(div,'temp',i));
+    tl.appendChild(div);
+  });
+  hpPressSteps.forEach((s,i)=>{
+    const div=document.createElement('div'); div.className='step-chip p-step'; div.dataset.index=i; div.dataset.type='press';
+    let dd=toDispTime(s.durationM);
+    let icon=s.type==='ramp'?'↑':s.type==='cool'?'↓':'— Hold';
+    div.innerHTML=`<div class="step-dot"></div><div class="step-label">
+      <span>${icon} <input class="inline-edit" type="number" step="any" value="${fmt(s.targetP)}" onchange="updateHPPress(${i},'targetP',this.value)" onclick="event.stopPropagation()">${pU}</span>
+      <span><input class="inline-edit" type="number" step="any" value="${fmt(dd)}" onchange="updateHPPress(${i},'durationM',this.value)" onclick="event.stopPropagation()">${getUnit()}</span>
+    </div><button class="step-remove" onclick="removeHPPress(${i});event.stopPropagation()">×</button>`;
+    div.addEventListener('click',()=>toggleSegment(div,'press',i));
+    pl.appendChild(div);
+  });
+}
+
+function toggleSegment(el,type,idx){
+  const allChips=document.querySelectorAll('.step-chip');
+  allChips.forEach(chip=>{
+    if(chip!==el) chip.classList.remove('expanded');
+  });
+  el.classList.toggle('expanded');
+}
+
+function openHPModal(type){
+  pendingHPType=type;
+  const isP=type.startsWith('press'), sub=type.split('-')[1];
+  document.getElementById('modalTitleText').textContent=`Add ${isP?'Pressure':'Temperature'} ${sub.charAt(0).toUpperCase()+sub.slice(1)}`;
+  // Default duration: 8 minutes expressed in display units
+  let defDurDisp=toDispTime(8);
+  let html='';
+  if(isP){
+    let curP=0; if(hpPressSteps.length) curP=hpPressSteps[hpPressSteps.length-1].targetP;
+    let defP=sub==='cool'?0:curP+(sub==='ramp'?50:0);
+    html=`<div class="input-group"><label class="input-label">Target (${getPressUnit()})</label><input id="m-target" class="glass-input" type="number" value="${fmt(defP)}"></div>`;
+  } else {
+    let curC=getBaseTempC(); if(hpTempSteps.length) curC=hpTempSteps[hpTempSteps.length-1].targetC;
+    let defC=sub==='cool'?getBaseTempC():curC+(sub==='ramp'?500:0);
+    let u=tempUnit==='C'?'°C':'K';
+    html=`<div class="input-group"><label class="input-label">Target (${u})</label><input id="m-target" class="glass-input" type="number" value="${fmt(toDispTemp(defC))}"></div>`;
+  }
+  html+=`<div class="input-group"><label class="input-label">Duration (${getUnit()})</label><input id="m-dur" class="glass-input" type="number" step="0.1" value="${fmt(defDurDisp)}"></div>`;
+  document.getElementById('modalBody').innerHTML=html;
+  document.getElementById('modalConfirmBtn').onclick=confirmHPModal;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function confirmHPModal(){
+  if(!pendingHPType) return;
+  const isP=pendingHPType.startsWith('press'), sub=pendingHPType.split('-')[1];
+  let td=parseFloat(document.getElementById('m-target').value);
+  let dd=parseFloat(document.getElementById('m-dur').value);
+  if(isNaN(td)||isNaN(dd)) return;
+  if(isP) hpPressSteps.push({type:sub,targetP:td,durationM:toInternalTime(dd)});
+  else hpTempSteps.push({type:sub,targetC:toInternalTemp(td),durationM:toInternalTime(dd)});
+  renderHPStepList(); redrawHP(); closeModal();
+}
+
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('show'); }
+function closeModalOutside(e){ if(e.target===document.getElementById('modalOverlay')) closeModal(); }
+
+// ============================================================
+// CANVAS & MENUS
+// ============================================================
+const mainCanvas=document.getElementById('mainCanvas');
+const hpCanvas=document.getElementById('hpCanvas');
+const ctxMenu=document.getElementById('ctxMenu');
+const ctxMenuHP=document.getElementById('ctxMenuHP');
+
+mainCanvas.addEventListener('contextmenu',e=>{ e.preventDefault(); ctxMenu.style.left=e.clientX+'px'; ctxMenu.style.top=e.clientY+'px'; ctxMenu.classList.add('show'); });
+hpCanvas.addEventListener('contextmenu',e=>{ e.preventDefault(); ctxMenuHP.style.left=e.clientX+'px'; ctxMenuHP.style.top=e.clientY+'px'; ctxMenuHP.classList.add('show'); });
+document.addEventListener('click',()=>{ ctxMenu.classList.remove('show'); ctxMenuHP.classList.remove('show'); });
+function ctxAction(a){ if(a==='clear') clearAll(); else openModal(a); }
+function ctxActionHP(a){ if(a==='clear') clearHP(); else openHPModal(a); }
+
+mainCanvas.addEventListener('dblclick',e=>handleDblClick(e,mainCanvas,activeLabelsThermal));
+hpCanvas.addEventListener('dblclick',e=>handleDblClick(e,hpCanvas,activeLabelsHP));
+
+function setupCanvas(id){
+  const c=document.getElementById(id);
+  const dpr=window.devicePixelRatio||1;
+  c.width=CANVAS_W*dpr; c.height=CANVAS_H*dpr;
+  c.style.width=CANVAS_W+'px'; c.style.height=CANVAS_H+'px';
+  const ctx=c.getContext('2d');
+  ctx.scale(dpr,dpr);
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+  ctx.font='18px "STIX Two Text",serif';
+  return ctx;
+}
+
+function niceTick(max,min=0,n=6){
+  const r=max-min; if(r<=0) return 10;
+  const raw=r/n, exp=Math.floor(Math.log10(raw)), m=raw/Math.pow(10,exp);
+  let nice=m<1.5?1:m<3?2:m<7?5:10;
+  return nice*Math.pow(10,exp);
+}
+
+function getTempTicks(minV,maxV,unit){
+  let ticks=[], first=unit==='C'?100:400, step=100;
+  if(maxV-first>800) step=200;
+  if(maxV-first>2000) step=500;
+  ticks.push(minV);
+  if(maxV>=first){
+    ticks.push(first);
+    for(let v=first+step;v<=maxV+step;v+=step) ticks.push(v);
+  } else {
+    let ns=niceTick(maxV,minV,4);
+    for(let v=Math.ceil(minV/ns)*ns;v<=maxV+ns;v+=ns) ticks.push(v);
+  }
+  ticks=[...new Set(ticks)].sort((a,b)=>a-b);
+  return ticks.filter(t=>{
+    if(t===minV||t===first&&maxV>=first) return true;
+    if(Math.abs(t-minV)<step*0.3) return false;
+    return true;
+  });
+}
+
+// ============================================================
+// THERMAL REDRAW
+// ============================================================
+function redraw(){
+  activeLabelsThermal=[];
+  const ctx=setupCanvas('mainCanvas');
+  const PAD={left:80,right:40,top:60,bottom:80};
+  const W=CANVAS_W-PAD.left-PAD.right, H=CANVAS_H-PAD.top-PAD.bottom;
+
+  let acc=0;
+  let pts=[{t:0,v:getBaseTempDisp()}];
+  thermalSteps.forEach(s=>{ acc+=s.durationM; pts.push({t:toDispTime(acc),v:toDispTemp(s.targetC)}); });
+
+  const maxT=pts.length>1&&pts[pts.length-1].t>0?pts[pts.length-1].t:1;
+  const vs=pts.map(p=>p.v);
+  const minV=Math.min(...vs)<getBaseTempDisp()?Math.floor(Math.min(...vs)):getBaseTempDisp();
+  const maxV=Math.max(...vs,minV+10)*1.15;
+  const vRange=maxV-minV;
+
+  const tx=t=>PAD.left+(t/maxT)*W;
+  const ty=v=>PAD.top+H-((v-minV)/vRange)*H;
+
+  drawRichText(ctx,document.getElementById('chart-title').value,PAD.left+W/2,PAD.top-30,'center');
+  ctx.strokeStyle='#000'; ctx.lineWidth=1;
+  ctx.strokeRect(PAD.left,PAD.top,W,H);
+
+  const TL=6; ctx.fillStyle='#000';
+  const xStep=niceTick(maxT,0,7);
+  const xEnd=tx(maxT);
+
+  for(let t=0;t<=maxT;t+=xStep){
+    let x=tx(t);
+    if(pts.length>1&&t!==maxT&&Math.abs(xEnd-x)<45) continue;
+    if(x>PAD.left+W+1) continue;
+    ctx.beginPath(); ctx.moveTo(x,PAD.top+H); ctx.lineTo(x,PAD.top+H-TL); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x,PAD.top); ctx.lineTo(x,PAD.top+TL); ctx.stroke();
+    ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText(fmt(t),x,PAD.top+H+12);
+  }
+
+  // Final time label (blue, editable)
+  if(pts.length>1){
+    let lbl=window.customFinalTimeThermal!==undefined?window.customFinalTimeThermal:fmt(maxT);
+    if(lbl!==''){
+      ctx.beginPath(); ctx.moveTo(xEnd,PAD.top+H); ctx.lineTo(xEnd,PAD.top+H-TL); ctx.stroke();
+      ctx.save(); ctx.font='bold 18px "STIX Two Text",serif';
+      let tw=ctx.measureText(lbl).width;
+      ctx.fillStyle='#0000ff'; ctx.textAlign='center'; ctx.textBaseline='top';
+      ctx.fillText(lbl,xEnd,PAD.top+H+12); ctx.restore();
+      activeLabelsThermal.push({x:xEnd-tw/2-2,y:PAD.top+H+8,w:tw+4,h:20,text:lbl,onEdit:(v)=>{window.customFinalTimeThermal=v;redraw();}});
+    }
+  }
+
+  // Y ticks
+  getTempTicks(minV,maxV,tempUnit).forEach(v=>{
+    let y=ty(v);
+    if(y<PAD.top-1||y>PAD.top+H+1) return;
+    ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(PAD.left+TL,y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD.left+W,y); ctx.lineTo(PAD.left+W-TL,y); ctx.stroke();
+    ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillText(fmt(v),PAD.left-10,y);
+  });
+
+  ctx.fillStyle='#000'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(`Time (${getUnit()})`,PAD.left+W/2,PAD.top+H+55);
+  ctx.save(); ctx.translate(PAD.left-60,PAD.top+H/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText(`Temperature (${tempUnit==='C'?'°C':'K'})`,0,0); ctx.restore();
+
+  if(pts.length>1){
+    ctx.beginPath();
+    pts.forEach((p,i)=>i===0?ctx.moveTo(tx(p.t),ty(p.v)):ctx.lineTo(tx(p.t),ty(p.v)));
+    ctx.strokeStyle='#0000ff'; ctx.lineWidth=1.5; ctx.stroke();
+
+    const u=tempUnit==='C'?'°C':'K';
+    const ru=document.getElementById('global-rate-unit').value;
+    const n=thermalSteps.length;
+
+    for(let i=1;i<pts.length;i++){
+      let p0=pts[i-1],p1=pts[i],s=thermalSteps[i-1];
+      let px0=tx(p0.t),py0=ty(p0.v),px1=tx(p1.t),py1=ty(p1.v);
+      let dx=px1-px0,dy=py1-py0,len=Math.sqrt(dx*dx+dy*dy)||1;
+      let nx=-dy/len,ny=dx/len;
+      if(ny>0){nx=-nx;ny=-ny;}
+      let lx=(px0+px1)/2+nx*22, ly=(py0+py1)/2+ny*22;
+
+      let si=i-1, isFirst=si===0, isLast=si===n-1;
+      let text='', color='#000';
+
+      if(s.type==='ramp'){
+        // Always show ramp rate label
+        text=`${getRateStr(p1.v-p0.v,s.durationM)} ${u}/${ru}, ${fmt(toDispTime(s.durationM))} ${getUnit()}`;
+        color='#cc0000';
+      } else if(s.type==='cool'){
+        // Always show cool rate label
+        text=`${getRateStr(p1.v-p0.v,s.durationM)} ${u}/${ru}, ${fmt(toDispTime(s.durationM))} ${getUnit()}`;
+        color='#007700';
+      } else if(s.type==='hold'){
+        // Only show hold label if it's not the first and not the last step
+        if(!isFirst&&!isLast){
+          text=`${fmt(p1.v)} ${u}, ${fmt(toDispTime(s.durationM))} ${getUnit()}`;
+        }
+        color='#0000ff';
+      }
+
+      if(s.customLabel!==undefined) text=s.customLabel;
+      drawLabel(ctx,text,lx,ly,color,true,activeLabelsThermal,(v)=>{s.customLabel=v;redraw();},18);
+    }
+
+    ctx.fillStyle='#0000ff';
+    pts.forEach(p=>{ctx.beginPath();ctx.arc(tx(p.t),ty(p.v),3,0,Math.PI*2);ctx.fill();});
+  }
+}
+
+// ============================================================
+// HOT PRESS REDRAW
+// ============================================================
+function redrawHP(){
+  activeLabelsHP=[];
+  const ctx=setupCanvas('hpCanvas');
+  const PAD={left:80,right:80,top:60,bottom:80};
+  const W=CANVAS_W-PAD.left-PAD.right, H=CANVAS_H-PAD.top-PAD.bottom;
+
+  // Build display-unit point arrays (all times via toDispTime from stored minutes)
+  let tAccM=0, hpTPts=[{t:0,v:getBaseTempDisp()}];
+  hpTempSteps.forEach(s=>{ tAccM+=s.durationM; hpTPts.push({t:toDispTime(tAccM),v:toDispTemp(s.targetC)}); });
+
+  let pAccM=0, hpPPts=[{t:0,v:0}];
+  hpPressSteps.forEach(s=>{ pAccM+=s.durationM; hpPPts.push({t:toDispTime(pAccM),v:s.targetP}); });
+
+  // maxTime in DISPLAY units - should be actual end time, similar to thermal page
+  const actualEnd=Math.max(hpTPts[hpTPts.length-1].t, hpPPts[hpPPts.length-1].t);
+  const maxTime=actualEnd>0?actualEnd:1;
+
+  const tvs=hpTPts.map(p=>p.v);
+  const minT=Math.min(...tvs)<getBaseTempDisp()?Math.floor(Math.min(...tvs)):getBaseTempDisp();
+  const maxTV=Math.max(...tvs,minT+10)*1.15;
+  const tRange=maxTV-minT;
+
+  const pvs=hpPPts.map(p=>p.v);
+  const minP=Math.min(...pvs)<0?Math.floor(Math.min(...pvs)):0;
+  const maxPV=Math.max(5,...pvs)*1.15;
+  const pRange=maxPV-minP;
+
+  const tx=t=>PAD.left+(t/maxTime)*W;
+  const tyT=v=>PAD.top+H-((v-minT)/tRange)*H;
+  const tyP=v=>PAD.top+H-((v-minP)/pRange)*H;
+
+  drawRichText(ctx,document.getElementById('hp-title').value,PAD.left+W/2,PAD.top-30,'center');
+  ctx.strokeStyle='#000'; ctx.lineWidth=1;
+  ctx.strokeRect(PAD.left,PAD.top,W,H);
+
+  const TL=6; ctx.fillStyle='#000';
+  // X-axis ticks — niceTick against display-unit maxTime
+  const xStep=niceTick(maxTime,0,7);
+  const xEnd=tx(maxTime);
+
+  for(let t=0;t<=maxTime;t+=xStep){
+    let x=tx(t);
+    if(x>PAD.left+W+1) continue;  // Don't draw beyond the right edge
+    ctx.beginPath(); ctx.moveTo(x,PAD.top+H); ctx.lineTo(x,PAD.top+H-TL); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x,PAD.top); ctx.lineTo(x,PAD.top+TL); ctx.stroke();
+    ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText(fmt(t),x,PAD.top+H+12);
+  }
+
+  // Final time label
+  if(actualEnd>0){
+    let lbl=window.customFinalTimeHP!==undefined?window.customFinalTimeHP:fmt(actualEnd);
+    if(lbl!==''){
+      ctx.beginPath(); ctx.moveTo(xEnd,PAD.top+H); ctx.lineTo(xEnd,PAD.top+H-TL); ctx.stroke();
+      ctx.save(); ctx.font='bold 18px "STIX Two Text",serif';
+      let tw=ctx.measureText(lbl).width;
+      ctx.fillStyle='#0000ff'; ctx.textAlign='center'; ctx.textBaseline='top';
+      ctx.fillText(lbl,xEnd,PAD.top+H+12); ctx.restore();
+      activeLabelsHP.push({x:xEnd-tw/2-2,y:PAD.top+H+8,w:tw+4,h:20,text:lbl,onEdit:(v)=>{window.customFinalTimeHP=v;redrawHP();}});
+    }
+  }
+
+  // Left Y: temperature
+  getTempTicks(minT,maxTV,tempUnit).forEach(v=>{
+    let y=tyT(v);
+    if(y<PAD.top-1||y>PAD.top+H+1) return;
+    ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(PAD.left+TL,y); ctx.stroke();
+    ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillText(fmt(v),PAD.left-10,y);
+  });
+
+  // Right Y: pressure
+  const yPStep=niceTick(maxPV,minP,6);
+  for(let v=Math.ceil(minP/yPStep)*yPStep;v<=maxPV;v+=yPStep){
+    let y=tyP(v);
+    if(y<PAD.top-1||y>PAD.top+H+1) continue;
+    ctx.beginPath(); ctx.moveTo(PAD.left+W,y); ctx.lineTo(PAD.left+W-TL,y); ctx.stroke();
+    ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillText(fmt(v),PAD.left+W+10,y);
+  }
+
+  ctx.fillStyle='#000'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(`Time (${getUnit()})`,PAD.left+W/2,PAD.top+H+55);
+  ctx.save(); ctx.translate(PAD.left-60,PAD.top+H/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText(`Temperature (${tempUnit==='C'?'°C':'K'})`,0,0); ctx.restore();
+  ctx.save(); ctx.translate(PAD.left+W+60,PAD.top+H/2); ctx.rotate(Math.PI/2);
+  ctx.fillText(`Pressure (${getPressUnit()})`,0,0); ctx.restore();
+
+  // === Temperature line ===
+  if(hpTPts.length>1){
+    ctx.beginPath();
+    hpTPts.forEach((p,i)=>i===0?ctx.moveTo(tx(p.t),tyT(p.v)):ctx.lineTo(tx(p.t),tyT(p.v)));
+    ctx.strokeStyle='#0000ff'; ctx.lineWidth=1.5; ctx.stroke();
+
+    const u=tempUnit==='C'?'°C':'K';
+    const ru=document.getElementById('global-rate-unit').value;
+    const nt=hpTempSteps.length;
+
+    for(let i=1;i<hpTPts.length;i++){
+      let p0=hpTPts[i-1],p1=hpTPts[i],s=hpTempSteps[i-1];
+      let px0=tx(p0.t),py0=tyT(p0.v),px1=tx(p1.t),py1=tyT(p1.v);
+      let dx=px1-px0,dy=py1-py0,len=Math.sqrt(dx*dx+dy*dy)||1;
+      let nx=-dy/len,ny=dx/len;
+      if(ny>0){nx=-nx;ny=-ny;}
+      let lx=(px0+px1)/2+nx*22, ly=(py0+py1)/2+ny*22;
+
+      let si=i-1,isFirst=si===0,isLast=si===nt-1;
+      let text='';
+      // Only show label for intermediate hold segments - display temperature value and duration
+      if(s.type==='hold'&&!isFirst&&!isLast){
+        text=`${fmt(p1.v)} ${u}, ${fmt(toDispTime(s.durationM))} ${getUnit()}`;
+      }
+      if(s.customLabel!==undefined) text=s.customLabel;
+      drawLabel(ctx,text,lx,ly,'#0000ff',true,activeLabelsHP,(v)=>{s.customLabel=v;redrawHP();},17);
+    }
+
+    ctx.fillStyle='#0000ff';
+    hpTPts.forEach(p=>{ctx.beginPath();ctx.arc(tx(p.t),tyT(p.v),3,0,Math.PI*2);ctx.fill();});
+  }
+
+  // === Pressure line ===
+  if(hpPPts.length>1){
+    ctx.beginPath();
+    hpPPts.forEach((p,i)=>i===0?ctx.moveTo(tx(p.t),tyP(p.v)):ctx.lineTo(tx(p.t),tyP(p.v)));
+    ctx.strokeStyle='#ff0000'; ctx.lineWidth=1.5; ctx.stroke();
+
+    const ru=document.getElementById('global-rate-unit').value;
+    const np=hpPressSteps.length;
+
+    for(let i=1;i<hpPPts.length;i++){
+      let p0=hpPPts[i-1],p1=hpPPts[i],s=hpPressSteps[i-1];
+      let px0=tx(p0.t),py0=tyP(p0.v),px1=tx(p1.t),py1=tyP(p1.v);
+      let dx=px1-px0,dy=py1-py0,len=Math.sqrt(dx*dx+dy*dy)||1;
+      let nx=-dy/len,ny=dx/len;
+      // Pressure labels offset the other way to avoid clashing with temp labels
+      if(ny<0){nx=-nx;ny=-ny;}
+      let lx=(px0+px1)/2+nx*22, ly=(py0+py1)/2+ny*22;
+
+      let si=i-1,isFirst=si===0,isLast=si===np-1;
+      let text='';
+      // Only show label for intermediate hold segments and not at 0 pressure (origin) - display pressure value and duration
+      if(s.type==='hold'&&!isFirst&&!isLast&&p1.v!==0){
+        text=`${fmt(p1.v)} ${getPressUnit()}, ${fmt(toDispTime(s.durationM))} ${getUnit()}`;
+      }
+      if(s.customLabel!==undefined) text=s.customLabel;
+      drawLabel(ctx,text,lx,ly,'#cc0000',true,activeLabelsHP,(v)=>{s.customLabel=v;redrawHP();},17);
+    }
+
+    ctx.fillStyle='#ff0000';
+    hpPPts.forEach(p=>{ctx.beginPath();ctx.arc(tx(p.t),tyP(p.v),3,0,Math.PI*2);ctx.fill();});
+  }
+}
+
+// ============================================================
+// DEMOS & EXPORT
+// ============================================================
+function loadDemo(){
+  document.getElementById('thermal-time-unit').value='h';
+  document.getElementById('global-temp-unit').value='C';
+  document.getElementById('global-rate-unit').value='min';
+  currentTimeUnit='h'; tempUnit='C';
+  window.customFinalTimeThermal=undefined;
+  thermalSteps=[
+    {type:'ramp',targetC:600,durationM:600},
+    {type:'hold',targetC:600,durationM:600},
+    {type:'cool',targetC:23,durationM:600}
+  ];
+  renderStepList(); redraw();
+}
+
+function loadHPDemo(){
+  document.getElementById('thermal-time-unit').value='min';
+  document.getElementById('global-temp-unit').value='C';
+  document.getElementById('global-rate-unit').value='min';
+  currentTimeUnit='min'; tempUnit='C';
+  window.customFinalTimeHP=undefined;
+  hpTempSteps=[
+    {type:'ramp',targetC:250,durationM:2},
+    {type:'hold',targetC:250,durationM:4},
+    {type:'ramp',targetC:500,durationM:3},
+    {type:'hold',targetC:500,durationM:8},
+    {type:'cool',targetC:23,durationM:3}
+  ];
+  hpPressSteps=[
+    {type:'ramp',targetP:20,durationM:0},
+    {type:'hold',targetP:20,durationM:6},
+    {type:'ramp',targetP:50,durationM:2},
+    {type:'hold',targetP:50,durationM:7.5},
+    {type:'cool',targetP:0,durationM:1}
+  ];
+  renderHPStepList(); redrawHP();
+}
+
+function exportPNG(id,fn){
+  const sourceCanvas=document.getElementById(id);
+  const scale=4800/96; // 4800 DPI / 96 standard DPI - Ultra high resolution
+  const hiResCanvas=document.createElement('canvas');
+  hiResCanvas.width=sourceCanvas.width*scale;
+  hiResCanvas.height=sourceCanvas.height*scale;
+  const ctx=hiResCanvas.getContext('2d',{willReadFrequently:true});
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality='high';
+  ctx.scale(scale,scale);
+  ctx.drawImage(sourceCanvas,0,0);
+  const a=document.createElement('a');
+  a.download=fn;
+  a.href=hiResCanvas.toDataURL('image/png',1.0);
+  a.click();
+}
+
+function exportSVG(id,fn){
+  const canvas=document.getElementById(id);
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width',canvas.width);
+  svg.setAttribute('height',canvas.height);
+  svg.setAttribute('viewBox',`0 0 ${canvas.width} ${canvas.height}`);
+  const ctx=canvas.getContext('2d');
+  const img=new Image();
+  img.src=canvas.toDataURL('image/png');
+  img.onload=()=>{
+    const g=svg.appendChild(document.createElementNS('http://www.w3.org/2000/svg','g'));
+    const image=g.appendChild(document.createElementNS('http://www.w3.org/2000/svg','image'));
+    image.setAttribute('width',canvas.width);
+    image.setAttribute('height',canvas.height);
+    image.setAttribute('href',img.src);
+    const serializer=new XMLSerializer();
+    const svgString=serializer.serializeToString(svg);
+    const blob=new Blob([svgString],{type:'image/svg+xml'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=fn;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+}
+
+function exportCSV(){
+  let csv='Type,Target Temperature,Duration (min)\n';
+  thermalSteps.forEach(s=>{
+    let type=s.type==='ramp'?'Ramp':s.type==='cool'?'Cool':'Hold';
+    csv+=`${type},${s.targetC},${s.durationM}\n`;
+  });
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='thermal_profile.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportHPCSV(){
+  let csv='Section,Type,Target Temperature (°C),Target Pressure (MPa),Duration (min)\n';
+  hpTempSteps.forEach((s,i)=>{
+    let type=s.type==='ramp'?'Ramp':s.type==='cool'?'Cool':'Hold';
+    csv+=`Temperature,${type},${s.targetC},,${s.durationM}\n`;
+  });
+  hpPressSteps.forEach((s,i)=>{
+    let type=s.type==='ramp'?'Ramp':s.type==='cool'?'Cool':'Hold';
+    csv+=`Pressure,${type},,${s.targetP},${s.durationM}\n`;
+  });
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='hotpress_profile.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+window.addEventListener('resize',()=>{ redraw(); redrawHP(); });
+window.onload=()=>{ loadDemo(); loadHPDemo(); };
+</script>
+</body>
+</html>
