@@ -21,12 +21,15 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: var(--font-latex); background: var(--bg1); min-height: 100vh; color: var(--text-primary); overflow-x: hidden; }
   .panel { background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 4px; }
-  header { position: relative; z-index: 10; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; background: var(--bg-panel); border-bottom: 1px solid var(--border-light); box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  header { position: relative; z-index: 10; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; background: var(--bg-panel); border-bottom: 1px solid var(--border-light); }
   .logo { display: flex; align-items: center; gap: 14px; }
+  .home-button { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 4px; background: #f0f0f0; border: 1px solid var(--border-light); cursor: pointer; text-decoration: none; color: #000; font-size: 18px; transition: all 0.2s ease; }
+  .home-button:hover { background: #e0e0e0; border-color: #0066cc; }
+  .home-button:active { background: #d0d0d0; }
   .logo-text { font-size: 24px; font-weight: 600; }
   .logo-sub { font-size: 12px; font-style: italic; color: var(--text-muted); }
   .tab-bar { display: flex; gap: 4px; background: #eaeaea; padding: 4px; border-radius: 4px; border: 1px solid var(--border-light); }
-  .tab-btn { padding: 6px 16px; border-radius: 2px; border: none; cursor: pointer; font-family: var(--font-latex); font-size: 14px; font-weight: 500; color: var(--text-secondary); background: transparent; transition: background 0.1s; }
+  .tab-btn { padding: 6px 16px; border-radius: 2px; border: none; cursor: pointer; font-family: var(--font-latex); font-size: 14px; font-weight: 500; color: var(--text-secondary); background: transparent; }
   .tab-btn.active { background: #ffffff; color: var(--text-primary); box-shadow: 0 1px 2px rgba(0,0,0,0.1); border: 1px solid var(--border-light); }
   .global-config { display: flex; gap: 16px; background: #e8e8e8; padding: 10px 32px; border-bottom: 1px solid #ccc; font-size: 13px; align-items: center; flex-wrap: wrap; }
   .app-body { display: grid; grid-template-columns: 340px 1fr; gap: 24px; padding: 24px 32px 32px; }
@@ -48,7 +51,7 @@
   .step-move-btn:disabled { color: #cccccc; cursor: not-allowed; }
   .input-group { margin-bottom: 12px; }
   .input-label { font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block; }
-  .glass-input { width: 100%; padding: 6px 8px; border-radius: 2px; background: #fff; border: 1px solid var(--border-light); color: var(--text-primary); font-family: var(--font-latex); font-size: 14px; outline: none; }
+  .glass-input { width: 100%; padding: 6px 8px; border-radius: 2px; background: #fff; border: 1px solid var(--border-light); color: var(--text-primary); font-family: var(--font-latex); font-size: 14px; }
   .glass-input:focus { border-color: var(--border-focus); }
   .hint { font-size: 12px; color: #666; margin-top: 6px; font-style: italic; line-height: 1.4; }
   .btn { padding: 6px 12px; border-radius: 2px; border: 1px solid var(--border-light); cursor: pointer; font-family: var(--font-latex); font-size: 13px; background: #f0f0f0; color: #111; font-weight: 500; }
@@ -59,7 +62,7 @@
   .canvas-area { display: flex; flex-direction: column; gap: 16px; align-items: flex-start; }
   .chart-container { padding: 20px; background: #ffffff; border: 1px solid var(--border-light); box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-radius: 2px; display: inline-block; width: 740px; height: 600px; }
   #mainCanvas, #hpCanvas { display: block; background: #fff; cursor: pointer; }
-  .ctx-menu { position: fixed; z-index: 1000; background: #fff; border: 1px solid #aaa; padding: 4px 0; box-shadow: 2px 2px 6px rgba(0,0,0,0.2); min-width: 140px; display: none; flex-direction: column; font-family: sans-serif; }
+  .ctx-menu { position: fixed; z-index: 1000; background: #fff; border: 1px solid #aaa; padding: 4px 0; box-shadow: 2px 2px 6px rgba(0,0,0,0.2); min-width: 140px; display: none; flex-direction: column; }
   .ctx-menu.show { display: flex; }
   .ctx-item { padding: 6px 16px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; color: #000; }
   .ctx-item:hover { background: #0066cc; color: #fff; }
@@ -81,6 +84,7 @@
 
 <header>
   <div class="logo">
+    <a href="https://abhiram.oneapp.dev" class="home-button" title="Home">🏠</a>
     <div>
       <div class="logo-text">ThermoGraph</div>
       <div class="logo-sub">High-Fidelity Profile Generation</div>
@@ -376,7 +380,7 @@ function renderStepList(){
     div.innerHTML=`<div class="step-dot"></div><div class="step-label">
       <span>${icon} <input class="inline-edit" type="number" step="any" value="${fmt(td)}" onchange="updateTStep(${i},'targetC',this.value)">${u}</span>
       <span><input class="inline-edit" type="number" step="any" value="${fmt(dd)}" onchange="updateTStep(${i},'durationM',this.value)">${getUnit()}</span>
-    </div><button class="step-move-btn" onclick="moveStepUp(${i})" ${i===0?'disabled':''}>▲</button><button class="step-move-btn" onclick="moveStepDown(${i})" ${i===thermalSteps.length-1?'disabled':''}>▼</button><button class="step-remove" onclick="removeStep(${i})">×</button>`;
+    </div><button class="step-move-btn" onclick="moveStepUp(${i})" ${i===0?'disabled':''}>▲</button><button class="step-move-btn" onclick="moveStepDown(${i})" ${i===thermalSteps.length-1?'disabled':''}>${'▼'}</button><button class="step-remove" onclick="removeStep(${i})">×</button>`;
     list.appendChild(div);
   });
 }
